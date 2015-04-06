@@ -15,6 +15,7 @@ namespace YHScrape
         {
             Settings = new CompanyStatisticsDownloadSettings(symbol);
         }
+
     }
     public class CompanyStatisticsDownloadSettings //: Base.SettingsBase
     {

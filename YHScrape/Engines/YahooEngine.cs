@@ -11,6 +11,7 @@ using YHScrape.Models;
 using System.Net;
 using System.IO;
 using System.Collections.Specialized;
+using System.Xml;
 
 namespace YHScrape.Engines
 {
@@ -123,6 +124,13 @@ namespace YHScrape.Engines
 
             return dicYQL;
         }
+
+        /// <summary>
+        /// Save Yahoo Daily Quote to a CSV file
+        /// </summary>
+        /// <param name="tickerListFile">location of tickerlist file</param>
+        /// <param name="YQLMapFile">location of YQLMap file</param>
+        /// <param name="outputFileName">location of output file</param>
         public void SaveDailyQuotesToCSV(string tickerListFile, string YQLMapFile, string outputFileName)
         {
             string sFormat = "";
@@ -240,6 +248,51 @@ namespace YHScrape.Engines
 
             if (DateTime.TryParse(input, out value)) return value;
             return null;
+        }
+
+        /// <summary>
+        /// Get Yahoo key stats from the specified url
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        private XmlDocument FetchKeyStats(string url)
+        {
+            HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
+            HttpWebResponse resp = (HttpWebResponse)req.GetResponse();            
+            StreamReader sr = new StreamReader(resp.GetResponseStream());
+            XmlDocument doc = new XmlDocument();
+            string result = sr.ReadToEnd();
+
+            HttpClient http = new HttpClient();
+            var response = await http.GetByteArrayAsync(website);
+            String source = Encoding.GetEncoding("utf-8").GetString(response, 0, response.Length - 1);
+            source = WebUtility.HtmlDecode(source);
+            HtmlDocument resultat = new HtmlDocument();
+            resultat.LoadHtml(source);
+
+            sr.Close();
+            return doc;
+        }
+
+        /// <summary>
+        /// Save Yahoo Key Stats to a CSV file
+        /// </summary>
+        /// <param name="tickerListFile">location of tickerlist file</param>
+        /// <param name="outputFileName">location of output file</param>
+        public void SaveKeyStatsToCSV(string tickerListFile, string outputFileName)
+        {
+            string url = "";
+            XmlDocument doc = new XmlDocument();
+            try
+            {
+                string[] tickers = GetTickerListFromFile(tickerListFile).Split('+');
+                foreach (string ticker in tickers)
+                {
+                    url = string.Format(BASE_URL_KEYSTATS, tickers);
+                    doc = FetchKeyStats(url);
+                }
+            }
+            catch (Exception e) { }
         }
     }
 }

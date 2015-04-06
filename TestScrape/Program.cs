@@ -21,8 +21,8 @@ namespace TestScrape
             string yqlMapFile = ConfigurationManager.AppSettings["yqlMapFile"];
             string outputFile = ConfigurationManager.AppSettings["outputFile"];
             YHScrape.Engines.YahooEngine yahooEngine = new YHScrape.Engines.YahooEngine();
-            yahooEngine.SaveDailyQuotesToCSV(tickerFile, yqlMapFile, outputFile);
-
+            //yahooEngine.SaveDailyQuotesToCSV(tickerFile, yqlMapFile, outputFile);
+            yahooEngine.SaveKeyStatsToCSV(tickerFile, outputFile);
             try
             {
                 using (var ctx = new YHScrape.Entities.YahooFinanceContext())
