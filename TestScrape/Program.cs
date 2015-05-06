@@ -16,30 +16,31 @@ namespace TestScrape
         static void Main(string[] args)
         {
             AppDomain.CurrentDomain.SetData("DataDirectory", System.IO.Directory.GetCurrentDirectory());
-            
+
             string tickerFile = ConfigurationManager.AppSettings["tickerFile"];
             string yqlMapFile = ConfigurationManager.AppSettings["yqlMapFile"];
             string outputFile = ConfigurationManager.AppSettings["outputFile"];
             YHScrape.Engines.YahooEngine yahooEngine = new YHScrape.Engines.YahooEngine();
             //yahooEngine.SaveDailyQuotesToCSV(tickerFile, yqlMapFile, outputFile);
-            yahooEngine.SaveKeyStatsToCSV(tickerFile, outputFile);
-            try
-            {
-                using (var ctx = new YHScrape.Entities.YahooFinanceContext())
-                {
-                    var stat = new YHScrape.Models.CompanyData();
-                    stat.CompanyName = "Google Inc";
-                    stat.Ticker = "GOOG";
-                    //var quote = new YHScrape.Models.YahooDailyQuote();
-                    //quote.CompanyDataId = 1;
-                    //stat.Item = new YHScrape.Models.CompanyStatisticsData();
+            //yahooEngine.SaveKeyStatsToCSV(tickerFile, outputFile);
+            yahooEngine.SaveKeyStatsToDB(tickerFile);
+            //try
+            //{
+            //    using (var ctx = new YHScrape.Entities.YahooFinanceContext())
+            //    {
+            //        var stat = new YHScrape.Models.CompanyData();
+            //        stat.CompanyName = "Google Inc";
+            //        stat.Ticker = "GOOG";
+            //        //var quote = new YHScrape.Models.YahooDailyQuote();
+            //        //quote.CompanyDataId = 1;
+            //        //stat.Item = new YHScrape.Models.CompanyStatisticsData();
                     
-                    ctx.YahooCompanyDatas.Add(stat);
-                    //ctx.Quotes.Add(quote);
-                    ctx.SaveChanges();                    
-                }
-            }
-            catch (Exception e) { WriteLog(e.Message); WriteLog(e.StackTrace); }
+            //        ctx.YahooCompanyDatas.Add(stat);
+            //        //ctx.Quotes.Add(quote);
+            //        ctx.SaveChanges();                    
+            //    }
+            //}
+            //catch (Exception e) { WriteLog(e.Message); WriteLog(e.StackTrace); }
         }
 
         public static void WriteLog(string message)

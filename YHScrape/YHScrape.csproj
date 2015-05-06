@@ -43,6 +43,7 @@
     <Reference Include="System.ComponentModel.DataAnnotations" />
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Entity" />
+    <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -53,6 +54,7 @@
     <Compile Include="DownloadStatisticsResult.cs" />
     <Compile Include="Engines\YahooEngine.cs" />
     <Compile Include="Entities\YahooFinanceContext.cs" />
+    <Compile Include="Helper.cs" />
     <Compile Include="Migrations\201503280333316_InitialCreate.cs" />
     <Compile Include="Migrations\201503280333316_InitialCreate.Designer.cs">
       <DependentUpon>201503280333316_InitialCreate.cs</DependentUpon>

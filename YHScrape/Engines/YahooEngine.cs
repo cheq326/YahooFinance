@@ -12,6 +12,8 @@ using System.Net;
 using System.IO;
 using System.Collections.Specialized;
 using System.Xml;
+using HtmlAgilityPack;
+using System.Web;
 
 namespace YHScrape.Engines
 {
@@ -26,7 +28,7 @@ namespace YHScrape.Engines
         /// </summary>
         /// <param name="url"></param>
         /// <returns></returns>
-        private StringBuilder FetchDailyQuotes(string url)
+        private string FetchDailyQuotes(string url)
         {
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             HttpWebResponse resp = (HttpWebResponse)req.GetResponse();
@@ -38,7 +40,7 @@ namespace YHScrape.Engines
             }
             //string results = sr.ReadToEnd();
             sr.Close();
-            return sbResult;
+            return sbResult.ToString();
         }
         /// <summary>
         /// Get tickers from the provided file location
@@ -149,21 +151,22 @@ namespace YHScrape.Engines
                 }
                 sHeader += "RequestTime";
                 string url = string.Format(BASE_URL_QUOTE, GetTickerListFromFile(tickerListFile), sFormat);
-                StringBuilder sData = FetchDailyQuotes(url);
-                CreateOutputFile(outputFileName, sHeader, sData);
+                string sData = FetchDailyQuotes(url);
+                string sFileName = string.Format(outputFileName, DateTime.Today.Date.ToString("yyyyMMdd"), "AllTickers.csv");
+                CreateOutputFile(sFileName, sHeader, sData);
             }
             catch (Exception e) { }
             
         }
-        private void CreateOutputFile(string outputFile, string sHeader, StringBuilder sData)
+        private void CreateOutputFile(string outputFile, string sHeader, string sData)
         {
-            string sDir = string.Format(outputFile, DateTime.Today.Date.ToString("yyyyMMdd"), "");
-            string sFileName = string.Format(outputFile, DateTime.Today.Date.ToString("yyyyMMdd"), "AllTickers.csv");
+            string sDir = Path.GetDirectoryName(outputFile);
+            
             if (!Directory.Exists(sDir))
             {
                 Directory.CreateDirectory(sDir);
             }
-            StreamWriter sw = new StreamWriter(sFileName);
+            StreamWriter sw = new StreamWriter(outputFile);
             sw.WriteLine(sHeader);
             sw.WriteLine(sData);
             sw.Flush();
@@ -251,29 +254,24 @@ namespace YHScrape.Engines
         }
 
         /// <summary>
-        /// Get Yahoo key stats from the specified url
+        /// Get Yahoo key stats for the specified ticker
         /// </summary>
-        /// <param name="url"></param>
+        /// <param name="ticker"></param>
         /// <returns></returns>
-        private XmlDocument FetchKeyStats(string url)
+        private HtmlDocument FetchKeyStats(string ticker)
         {
+            string url = string.Format(BASE_URL_KEYSTATS, ticker);
             HttpWebRequest req = (HttpWebRequest)WebRequest.Create(url);
             HttpWebResponse resp = (HttpWebResponse)req.GetResponse();            
             StreamReader sr = new StreamReader(resp.GetResponseStream());
             XmlDocument doc = new XmlDocument();
             string result = sr.ReadToEnd();
+            HtmlDocument htmlData = new HtmlDocument();
+            //resultat.LoadHtml(source);
+            htmlData.LoadHtml(HttpUtility.HtmlDecode(result));
 
-            HttpClient http = new HttpClient();
-            var response = await http.GetByteArrayAsync(website);
-            String source = Encoding.GetEncoding("utf-8").GetString(response, 0, response.Length - 1);
-            source = WebUtility.HtmlDecode(source);
-            HtmlDocument resultat = new HtmlDocument();
-            resultat.LoadHtml(source);
-
-            sr.Close();
-            return doc;
+            return htmlData;
         }
-
         /// <summary>
         /// Save Yahoo Key Stats to a CSV file
         /// </summary>
@@ -281,18 +279,143 @@ namespace YHScrape.Engines
         /// <param name="outputFileName">location of output file</param>
         public void SaveKeyStatsToCSV(string tickerListFile, string outputFileName)
         {
-            string url = "";
-            XmlDocument doc = new XmlDocument();
+            HtmlDocument htmlDoc = new HtmlDocument();
             try
             {
                 string[] tickers = GetTickerListFromFile(tickerListFile).Split('+');
                 foreach (string ticker in tickers)
                 {
-                    url = string.Format(BASE_URL_KEYSTATS, tickers);
-                    doc = FetchKeyStats(url);
+                    htmlDoc = FetchKeyStats(ticker);
+                    //foreach (var error in htmlDoc.ParseErrors)
+                    //{
+                    //    Console.WriteLine(error.Line);
+                    //    Console.WriteLine(error.Reason);
+                    //}
+
+                    var query = //from table in htmlData.DocumentNode.SelectNodes("//table[contains(@class,'datamodoutline')]").Cast<HtmlNode>()
+                                from row in htmlDoc.DocumentNode.SelectNodes(".//tr[td[contains(@class,'yfnc_tablehead')]]|.//tr[td[contains(@class,'yfnc_tabledata')]]").Cast<HtmlNode>()
+                                //from cellData in table.SelectNodes(".//td[contains(@class,'yfnc_tabledata')]").Cast<HtmlNode>()
+                                //select row; 
+                                select new { Head = row.FirstChild.InnerText, Data = row.LastChild.InnerText };
+                    
+                    string sHead = "";
+                    string sData = "";
+                    int iCounter = 0;
+                    foreach (var row in query)
+                    {
+                        sHead += Helper.RemoveParenthesesContend(row.Head) + ",";
+                        sData += row.Data.Replace(',', ' ') + ",";
+                        iCounter++;
+                    }
+                    sHead += "RequestTime";
+                    sData += DateTime.Now;
+                    string sFileName = string.Format(outputFileName, DateTime.Today.Date.ToString("yyyyMMdd"), ticker + ".csv");
+                    CreateOutputFile(sFileName, sHead, sData);
                 }
             }
             catch (Exception e) { }
         }
+
+        /// <summary>
+        /// Save Yahoo Key Stats to DB
+        /// </summary>
+        /// <param name="tickerListFile">location of tickerlist file</param>
+        public void SaveKeyStatsToDB(string tickerListFile)
+        {
+            HtmlDocument htmlDoc = new HtmlDocument();
+            try
+            {
+                string[] tickers = GetTickerListFromFile(tickerListFile).Split('+');
+                
+                using (var ctx = new YHScrape.Entities.YahooFinanceContext())
+                {
+                    foreach (string ticker in tickers)
+                    {
+                        htmlDoc = FetchKeyStats(ticker);
+                        var query = //from table in htmlData.DocumentNode.SelectNodes("//table[contains(@class,'datamodoutline')]").Cast<HtmlNode>()
+                                    from row in htmlDoc.DocumentNode.SelectNodes(".//tr[td[contains(@class,'yfnc_tablehead')]]|.//tr[td[contains(@class,'yfnc_tabledata')]]").Cast<HtmlNode>()
+                                    //from cellData in table.SelectNodes(".//td[contains(@class,'yfnc_tabledata')]").Cast<HtmlNode>()
+                                    //select row; 
+                                    select new { Head = row.FirstChild.InnerText, Data = row.LastChild.InnerText };
+                        int iCount = 0;
+                        List<decimal?> valMeasureData = new List<decimal?>();
+                        List<decimal?> financeHL = new List<decimal?>();
+                        List<decimal?> tradeInfo = new List<decimal?>();
+                        DateTime? fiscalYearEnds = null;
+                        DateTime? recentQtr = null;
+                        DateTime? dividendDate = null;
+                        DateTime? exDividendDate = null;
+                        DateTime? lastSplitDate = null;
+                        string lastSplitFactor = "";
+                        foreach (var row in query)
+                        {
+                            if (iCount <= 8)
+                            {
+                                valMeasureData.Add(Helper.ParseToDecimalValue(row.Data));
+                            }
+                            else if (iCount == 9)
+                            {
+                                fiscalYearEnds = Helper.ParseToDateTime(row.Data);
+                            }
+                            else if (iCount == 10)
+                            {
+                                recentQtr = Helper.ParseToDateTime(row.Data);
+                            }
+                            else if (iCount > 10 && iCount <= 30)
+                            {
+                                financeHL.Add(Helper.ParseToDecimalValue(row.Data));
+                            }
+                            else if (iCount > 30 && iCount <= 53)
+                            {
+                                tradeInfo.Add(Helper.ParseToDecimalValue(row.Data));
+                            }
+                            else if (iCount == 54)
+                            {
+                                dividendDate = Helper.ParseToDateTime(row.Data);
+                            }
+                            else if (iCount == 55)
+                            {
+                                exDividendDate = Helper.ParseToDateTime(row.Data);
+                            }
+                            else if (iCount == 56)
+                            {
+                                lastSplitFactor = row.Data;
+                            }
+                            else if (iCount == 57)
+                            {
+                                lastSplitDate = Helper.ParseToDateTime(row.Data);
+                            }
+                            iCount++;
+                        }
+                        
+                        CompanyData comData = new CompanyData();
+                        CompanyStatisticsData statData = new CompanyStatisticsData();
+                        statData.CollectionDate = DateTime.Now;
+                        statData.CompanyValuationMeasures = new CompanyValuationMeasures(valMeasureData);
+                        statData.CompanyFinancialHighlights = new CompanyFinancialHighlights(fiscalYearEnds, recentQtr, financeHL);
+                        statData.CompanyTradingInfo = new CompanyTradingInfo(tradeInfo, dividendDate, exDividendDate, lastSplitDate, lastSplitFactor);
+                        var comInfo = ctx.YahooCompanyDatas.Where(c => c.Ticker == ticker).SingleOrDefault();
+                        if (comInfo == null)
+                        {
+                            comData.Ticker = ticker;
+                            comData.CompanyName = "";
+                            ctx.YahooCompanyDatas.Add(comData);
+                            comData.CompanyStatDatas.Add(statData);
+                            ctx.YahooCompanyDatas.Add(comData);
+                        }
+                        else
+                        {
+                            comInfo.CompanyStatDatas = comData.CompanyStatDatas;
+                        }
+                        
+                    }
+                    
+                    ctx.SaveChanges();
+                }
+            }
+            catch (Exception e) { }
+        }
+
+        
     }
 }

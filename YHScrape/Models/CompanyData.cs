@@ -15,16 +15,17 @@ namespace YHScrape.Models
     {
         public CompanyData()
         {
-            this.CompanyDatas = new HashSet<CompanyStatisticsData>();
+            this.CompanyStatDatas = new HashSet<CompanyStatisticsData>();
             this.DailyQuotes = new HashSet<DailyQuote>();
         }
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         [StringLength(100)]
         public string CompanyName { get; set; }
         [StringLength(10)]
         public string Ticker { get; set; }
-        public virtual ICollection<CompanyStatisticsData> CompanyDatas { get; set; }
+        public virtual ICollection<CompanyStatisticsData> CompanyStatDatas { get; set; }
         public virtual ICollection<DailyQuote> DailyQuotes { get; set; }
     }
 

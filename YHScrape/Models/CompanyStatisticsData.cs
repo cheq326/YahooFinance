@@ -16,6 +16,7 @@ namespace YHScrape.Models
     public class CompanyStatisticsData
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
         [ForeignKey("CompanyData")]
         public int CompanyDataId { get; set; }
@@ -107,7 +108,7 @@ namespace YHScrape.Models
         /// Trailing Twelve Months</remarks>
         public decimal? EnterpriseValueToEBITDA { get; set; }
 
-        internal CompanyValuationMeasures(decimal?[] values)
+        internal CompanyValuationMeasures(List<decimal?> values)
         {
             this.MarketCapitalisationInMillion = values[0];
             this.EnterpriseValueInMillion = values[1];
@@ -306,7 +307,7 @@ namespace YHScrape.Models
         public decimal? LeveredFreeCashFlowInMillion { get; set; }
 
 
-        internal CompanyFinancialHighlights(System.DateTime fiscalYEnds, System.DateTime mostRecentQtr, decimal?[] values)
+        internal CompanyFinancialHighlights(System.DateTime? fiscalYEnds, System.DateTime? mostRecentQtr, List<decimal?> values)
         {
             this.FiscalYearEnds = fiscalYEnds;
             this.MostRecentQuarter = mostRecentQtr;
@@ -521,7 +522,7 @@ namespace YHScrape.Models
 
 
 
-        internal CompanyTradingInfo(decimal?[] values, System.DateTime dividendDate, System.DateTime exDividendDate, System.DateTime lastSplitDate, string lastSplitFactor)
+        internal CompanyTradingInfo(List<decimal?> values, System.DateTime? dividendDate, System.DateTime? exDividendDate, System.DateTime? lastSplitDate, string lastSplitFactor)
         {
             this.Beta = values[0];
             this.OneYearChangePercent = values[1];
